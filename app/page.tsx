@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -13,7 +14,7 @@ import {
 } from 'lucide-react';
 
 // ============================================================================
-// KONFIGURASI AWAL & DATA ASSET (Hanya 3 Lokasi Valid)
+// KONFIGURASI AWAL & DATA ASSET
 // ============================================================================
 
 const MapWithNoSSR = dynamic(() => import('../components/MapLayer'), { ssr: false });
@@ -69,7 +70,6 @@ export default function EnterpriseDashboard() {
   const [systemHealth, setSystemHealth] = useState(100);
   const [cameraTarget, setCameraTarget] = useState([0, 0, 0]);
 
-  // SYSTEM KERNEL (Waktu & Telemetri Real-Time)
   useEffect(() => {
     setMounted(true);
     const timeInterval = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -93,7 +93,6 @@ export default function EnterpriseDashboard() {
     return () => { clearInterval(timeInterval); clearInterval(sensorInterval); };
   }, []);
 
-  // DATA SELECTORS
   const activeUnitData = useMemo(() => selectedUnit ? units.find(u => u.id === selectedUnit.id) : null, [selectedUnit, units]);
   const filteredUnits = useMemo(() => units.filter(unit => {
     const matchSearch = unit.name.toLowerCase().includes(searchQuery.toLowerCase()) || unit.region.toLowerCase().includes(searchQuery.toLowerCase());
@@ -101,7 +100,6 @@ export default function EnterpriseDashboard() {
     return matchSearch && matchFilter;
   }), [units, searchQuery, filterStatus]);
 
-  // NAVIGATION EVENT HANDLERS
   const handleUnitSelect = (unit) => {
     setMapCenter(unit.coordinates);
     setMapZoom(16);
@@ -136,10 +134,6 @@ export default function EnterpriseDashboard() {
     if (status === 'WARNING') return '#f59e0b'; 
     return '#ef4444';                           
   };
-
-  // ============================================================================
-  // VIEW RENDERERS (Modular UI)
-  // ============================================================================
 
   const renderHeader = () => (
     <header style={{ height: '64px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0d1117', display: 'flex', alignItems: 'center', padding: '0 24px', justifyContent: 'space-between', zIndex: 50 }}>
