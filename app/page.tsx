@@ -10,11 +10,11 @@ import { Model } from '../components/REV1';
 import { 
   MapPin, Search, Bell, Settings, ShieldCheck, Thermometer, Wind, 
   CloudFog, Clock, Server, ChevronLeft, Power, MousePointerClick, 
-  AlertTriangle, Factory, ShieldAlert, Eye, EyeOff
+  AlertTriangle, Factory, ShieldAlert, Eye, EyeOff, Menu, X
 } from 'lucide-react';
 
 // ============================================================================
-// KONFIGURASI AWAL & DATA ASSET (3 Lokasi Valid)
+// KONFIGURASI AWAL & DATA ASSET
 // ============================================================================
 
 const MapWithNoSSR = dynamic(() => import('../components/MapLayer'), { ssr: false });
@@ -70,11 +70,22 @@ export default function EnterpriseDashboard() {
   const [systemHealth, setSystemHealth] = useState(100);
   const [cameraTarget, setCameraTarget] = useState([0, 0, 0]);
 
-  // STATE BARU: Mengontrol visibilitas bar pencarian dan filter status
   const [showSearchControls, setShowSearchControls] = useState(true);
+  
+  // STATE BARU: Deteksi HP dan Menu Mobile
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    
+    // Fungsi Deteksi Ukuran Layar HP
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkMobile(); // Cek saat pertama kali dimuat
+    window.addEventListener('resize', checkMobile); // Cek ulang saat layar diputar/di-resize
+
     const timeInterval = setInterval(() => setCurrentTime(new Date()), 1000);
     const sensorInterval = setInterval(() => {
       setUnits(prevUnits => prevUnits.map(unit => {
@@ -93,7 +104,12 @@ export default function EnterpriseDashboard() {
       }));
       setSystemHealth(prev => Math.max(92, Math.min(100, prev + (Math.random() * 2 - 1))));
     }, 2000);
-    return () => { clearInterval(timeInterval); clearInterval(sensorInterval); };
+    
+    return () => { 
+      clearInterval(timeInterval); 
+      clearInterval(sensorInterval); 
+      window.removeEventListener('resize', checkMobile);
+    };
   }, []);
 
   const activeUnitData = useMemo(() => selectedUnit ? units.find(u => u.id === selectedUnit.id) : null, [selectedUnit, units]);
@@ -107,6 +123,7 @@ export default function EnterpriseDashboard() {
   const handleUnitSelect = (unit) => {
     setMapCenter(unit.coordinates);
     setMapZoom(16);
+    setShowMobileMenu(false); // Tutup sidebar otomatis saat lokasi dipilih (khusus HP)
     setTimeout(() => {
       setSelectedUnit(unit);
       setActivePanelIndex(null); 
@@ -144,39 +161,55 @@ export default function EnterpriseDashboard() {
   // ============================================================================
 
   const renderHeader = () => (
-    <header style={{ height: '64px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0d1117', display: 'flex', alignItems: 'center', padding: '0 24px', justifyContent: 'space-between', zIndex: 50 }}>
+    <header style={{ height: '64px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0d1117', display: 'flex', alignItems: 'center', padding: isMobile ? '0 16px' : '0 24px', justifyContent: 'space-between', zIndex: 50 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        
+        {/* Tombol Hamburger Menu (Hanya Muncul di HP) */}
+        {isMobile && (
+          <Menu 
+            size={24} 
+            color="#f0f6fc" 
+            style={{ cursor: 'pointer', marginRight: '8px' }} 
+            onClick={() => setShowMobileMenu(true)} 
+          />
+        )}
+
         <div style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <img src="/logo-digibot.png" alt="DigiBot" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '800', letterSpacing: '0.5px', color: '#f0f6fc' }}>DIGITAL TWIN</h1>
-          <p style={{ margin: 0, fontSize: '11px', color: '#8b949e', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Enterprise Fire Suppression</p>
-        </div>
+        
+        {/* Sembunyikan Judul Text di HP agar tidak sumpek */}
+        {!isMobile && (
+          <div>
+            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '800', letterSpacing: '0.5px', color: '#f0f6fc' }}>DIGITAL TWIN</h1>
+            <p style={{ margin: 0, fontSize: '11px', color: '#8b949e', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>Enterprise Fire Suppression</p>
+          </div>
+        )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#8b949e', fontWeight: '600' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: systemHealth > 95 ? '#10b981' : '#f59e0b', boxShadow: `0 0 10px ${systemHealth > 95 ? '#10b981' : '#f59e0b'}` }} />
-          NET: {systemHealth.toFixed(1)}%
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#8b949e', background: '#161b22', padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <Clock size={16} color="#10b981" />
-          {mounted ? (
-            <>
-              <span style={{ fontWeight: '500' }}>{currentTime.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-              <span style={{ color: '#30363d' }}>|</span>
-              <span style={{ color: '#f0f6fc', fontWeight: '700', width: '65px', textAlign: 'center', display: 'inline-block', fontFamily: 'monospace', fontSize: '14px' }}>{currentTime.toLocaleTimeString('id-ID')}</span>
-            </>
-          ) : (
-            <span style={{ width: '150px', textAlign: 'center', opacity: 0.5 }}>Syncing NTP...</span>
-          )}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '16px' : '24px' }}>
         
-        <div style={{ width: '1px', height: '24px', background: '#30363d' }} />
-        <Bell size={18} color="#8b949e" style={{ cursor: 'pointer', transition: 'color 0.2s' }} onMouseOver={(e) => e.target.style.color = '#fff'} onMouseOut={(e) => e.target.style.color = '#8b949e'} />
-        <Settings size={18} color="#8b949e" style={{ cursor: 'pointer', transition: 'color 0.2s' }} onMouseOver={(e) => e.target.style.color = '#fff'} onMouseOut={(e) => e.target.style.color = '#8b949e'} />
+        {!isMobile && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#8b949e', fontWeight: '600' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: systemHealth > 95 ? '#10b981' : '#f59e0b', boxShadow: `0 0 10px ${systemHealth > 95 ? '#10b981' : '#f59e0b'}` }} />
+            NET: {systemHealth.toFixed(1)}%
+          </div>
+        )}
+
+        {/* Sembunyikan Jam di HP */}
+        {!isMobile && mounted && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#8b949e', background: '#161b22', padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <Clock size={16} color="#10b981" />
+            <span style={{ fontWeight: '500' }}>{currentTime.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+            <span style={{ color: '#30363d' }}>|</span>
+            <span style={{ color: '#f0f6fc', fontWeight: '700', width: '65px', textAlign: 'center', display: 'inline-block', fontFamily: 'monospace', fontSize: '14px' }}>{currentTime.toLocaleTimeString('id-ID')}</span>
+          </div>
+        )}
+        
+        {!isMobile && <div style={{ width: '1px', height: '24px', background: '#30363d' }} />}
+        
+        <Bell size={18} color="#8b949e" style={{ cursor: 'pointer' }} />
+        {!isMobile && <Settings size={18} color="#8b949e" style={{ cursor: 'pointer' }} />}
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
           <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#21262d', border: '2px solid #30363d', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 'bold', color: '#c9d1d9' }}>DA</div>
@@ -186,32 +219,47 @@ export default function EnterpriseDashboard() {
   );
 
   const renderSidebar = () => (
-    <aside style={{ width: '320px', background: '#0d1117', borderRight: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', zIndex: 40 }}>
+    <aside style={{ 
+      width: isMobile ? '85%' : '320px', // Di HP lebarnya 85% layaknya laci Android
+      maxWidth: '350px',
+      position: isMobile ? 'absolute' : 'relative',
+      left: 0, top: 0, bottom: 0,
+      background: '#0d1117', 
+      borderRight: '1px solid rgba(255,255,255,0.08)', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      zIndex: 60, // Harus di atas peta pada versi Mobile
+      transform: isMobile ? (showMobileMenu ? 'translateX(0)' : 'translateX(-100%)') : 'none',
+      transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      boxShadow: isMobile && showMobileMenu ? '10px 0 30px rgba(0,0,0,0.5)' : 'none'
+    }}>
       
-      {/* BARIS SAKELAR HIDE / UNHIDE SEARCH */}
       <div style={{ padding: '15px 20px 5px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
         <span style={{ fontSize: '11px', color: '#8b949e', fontWeight: 'bold', letterSpacing: '1px' }}>SYSTEM REGISTRY</span>
-        <button 
-          onClick={() => setShowSearchControls(!showSearchControls)} 
-          style={{ background: 'transparent', border: 'none', color: '#10b981', fontSize: '11px', cursor: 'pointer', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px', outline: 'none' }}
-        >
-          {showSearchControls ? <><EyeOff size={12} /> Hide Search</> : <><Eye size={12} /> Show Search</>}
-        </button>
+        
+        {/* Tombol Tutup/X hanya untuk Mobile, Tombol Hide Search untuk Desktop */}
+        {isMobile ? (
+          <X size={22} color="#8b949e" onClick={() => setShowMobileMenu(false)} style={{ cursor: 'pointer' }} />
+        ) : (
+          <button 
+            onClick={() => setShowSearchControls(!showSearchControls)} 
+            style={{ background: 'transparent', border: 'none', color: '#10b981', fontSize: '11px', cursor: 'pointer', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px', outline: 'none' }}
+          >
+            {showSearchControls ? <><EyeOff size={12} /> Hide Search</> : <><Eye size={12} /> Show Search</>}
+          </button>
+        )}
       </div>
 
-      {/* PANEL PENCARIAN & FILTER (BISA DI-COLLAPSE) */}
-      {showSearchControls && (
-        <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)', animation: 'fadeIn 0.2s ease-out' }}>
+      {(showSearchControls || isMobile) && (
+        <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <div style={{ position: 'relative', marginBottom: '16px' }}>
             <Search size={16} color="#8b949e" style={{ position: 'absolute', left: '14px', top: '10px' }} />
             <input 
               type="text" 
-              placeholder="Search Asset ID / Location..." 
+              placeholder="Search Asset ID..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: '100%', background: '#010409', border: '1px solid #30363d', color: '#f0f6fc', padding: '10px 10px 10px 38px', borderRadius: '8px', outline: 'none', fontSize: '13px', transition: 'border-color 0.2s' }}
-              onFocus={(e) => e.target.style.borderColor = '#10b981'}
-              onBlur={(e) => e.target.style.borderColor = '#30363d'}
+              style={{ width: '100%', background: '#010409', border: '1px solid #30363d', color: '#f0f6fc', padding: '10px 10px 10px 38px', borderRadius: '8px', outline: 'none', fontSize: '13px' }}
             />
           </div>
           
@@ -219,7 +267,7 @@ export default function EnterpriseDashboard() {
             {['ALL', 'SAFE', 'WARNING', 'DANGER'].map(status => (
               <button 
                 key={status} onClick={() => setFilterStatus(status)}
-                style={{ flex: 1, padding: '8px 0', fontSize: '10px', fontWeight: '700', letterSpacing: '0.5px', background: filterStatus === status ? '#21262d' : 'transparent', color: filterStatus === status ? '#f0f6fc' : '#8b949e', border: filterStatus === status ? '1px solid #30363d' : '1px solid transparent', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s' }}
+                style={{ flex: 1, padding: '8px 0', fontSize: '10px', fontWeight: '700', background: filterStatus === status ? '#21262d' : 'transparent', color: filterStatus === status ? '#f0f6fc' : '#8b949e', border: filterStatus === status ? '1px solid #30363d' : '1px solid transparent', borderRadius: '6px' }}
               >
                 {status}
               </button>
@@ -228,12 +276,11 @@ export default function EnterpriseDashboard() {
         </div>
       )}
 
-      {/* DAFTAR ASSET */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '15px 20px 20px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div style={{ fontSize: '11px', color: '#8b949e', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '4px' }}>DEPLOYED UNITS ({filteredUnits.length})</div>
         
         {filteredUnits.length === 0 ? (
-          <div style={{ textAlign: 'center', color: '#8b949e', fontSize: '13px', marginTop: '30px', padding: '20px', border: '1px dashed #30363d', borderRadius: '8px' }}>No units match current filter.</div>
+          <div style={{ textAlign: 'center', color: '#8b949e', fontSize: '13px', marginTop: '30px' }}>No units match current filter.</div>
         ) : (
           filteredUnits.map(unit => {
             const color = getStatusColor(unit.status);
@@ -241,17 +288,15 @@ export default function EnterpriseDashboard() {
             return (
               <div 
                 key={unit.id} onClick={() => handleUnitSelect(unit)}
-                style={{ background: isActive ? '#161b22' : '#010409', border: `1px solid ${isActive ? color : '#30363d'}`, borderRadius: '10px', padding: '16px', cursor: 'pointer', transition: 'all 0.2s', position: 'relative', overflow: 'hidden' }}
-                onMouseOver={(e) => e.currentTarget.style.borderColor = isActive ? color : '#8b949e'}
-                onMouseOut={(e) => e.currentTarget.style.borderColor = isActive ? color : '#30363d'}
+                style={{ background: isActive ? '#161b22' : '#010409', border: `1px solid ${isActive ? color : '#30363d'}`, borderRadius: '10px', padding: '16px', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
               >
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: color, boxShadow: `0 0 12px ${color}` }} />
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: color }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div style={{ maxWidth: '70%' }}>
-                    <h3 style={{ margin: '0 0 6px 0', fontSize: '14px', color: '#f0f6fc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{unit.name}</h3>
+                    <h3 style={{ margin: '0 0 6px 0', fontSize: '14px', color: '#f0f6fc' }}>{unit.name}</h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#8b949e' }}><MapPin size={12} /> {unit.region}</div>
                   </div>
-                  <div style={{ background: `${color}15`, color: color, padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', border: `1px solid ${color}40`, letterSpacing: '0.5px' }}>
+                  <div style={{ background: `${color}15`, color: color, padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', border: `1px solid ${color}40` }}>
                     {unit.status}
                   </div>
                 </div>
@@ -266,33 +311,40 @@ export default function EnterpriseDashboard() {
   const render3DViewport = () => (
     <section style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
       
+      {/* Background Gelap penutup Peta saat menu Mobile Terbuka */}
+      {isMobile && showMobileMenu && (
+        <div 
+          onClick={() => setShowMobileMenu(false)}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 55, backdropFilter: 'blur(3px)' }} 
+        />
+      )}
+
       {activeUnitData && (
-        <div style={{ position: 'absolute', top: 24, left: 24, zIndex: 10 }}>
-          <button onClick={handleBackToMap} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(13, 17, 23, 0.8)', backdropFilter: 'blur(10px)', color: '#f0f6fc', border: '1px solid #30363d', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', transition: '0.2s', fontSize: '13px', fontWeight: '600', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }} onMouseOver={(e) => e.currentTarget.style.background = '#21262d'} onMouseOut={(e) => e.currentTarget.style.background = 'rgba(13, 17, 23, 0.8)'}>
-            <ChevronLeft size={18} /> Global Map View
+        <div style={{ position: 'absolute', top: isMobile ? 16 : 24, left: isMobile ? 16 : 24, zIndex: 10 }}>
+          <button onClick={handleBackToMap} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(13, 17, 23, 0.8)', color: '#f0f6fc', border: '1px solid #30363d', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600' }}>
+            <ChevronLeft size={18} /> {isMobile ? 'Back' : 'Global Map View'}
           </button>
         </div>
       )}
 
       {activeUnitData && activePanelIndex === null && (
-        <div style={{ position: 'absolute', bottom: 40, left: '50%', transform: 'translateX(-50%)', zIndex: 10, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', color: '#10b981', padding: '12px 24px', borderRadius: '30px', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px', pointerEvents: 'none', animation: 'pulse 2s infinite', boxShadow: '0 0 20px rgba(16, 185, 129, 0.2)' }}>
-          <MousePointerClick size={18} /> Select a physical module to establish telemetry uplink
+        <div style={{ position: 'absolute', bottom: isMobile ? 40 : 40, left: '50%', transform: 'translateX(-50%)', zIndex: 10, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', color: '#10b981', padding: '10px 20px', borderRadius: '30px', fontSize: isMobile ? '11px' : '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '10px', pointerEvents: 'none', animation: 'pulse 2s infinite' }}>
+          <MousePointerClick size={18} /> {isMobile ? 'Tap a module to view telemetry' : 'Select a physical module to establish telemetry uplink'}
         </div>
       )}
 
-      <div style={{ flex: 1, position: 'relative', cursor: activePanelIndex !== null ? 'auto' : 'pointer' }}>
+      <div style={{ flex: 1, position: 'relative' }}>
         {!activeUnitData ? (
           <MapWithNoSSR onSelectUnit={handleUnitSelect} activeCenter={mapCenter} activeZoom={mapZoom} />
         ) : (
           <div style={{ width: '100%', height: '100%', background: 'radial-gradient(circle at center, #e2e8f0 0%, #94a3b8 100%)' }}>
             <Canvas shadows camera={{ position: [0, 5, 10], fov: 42 }}>
-              <Suspense fallback={<Html center><div style={{ color: '#1e293b', fontFamily: 'monospace', fontWeight: '800', letterSpacing: '2px', background: 'rgba(255,255,255,0.8)', padding: '10px 20px', borderRadius: '8px' }}>BOOTING 3D ENGINE...</div></Html>}>
+              <Suspense fallback={<Html center><div style={{ color: '#1e293b', fontFamily: 'monospace', fontWeight: '800' }}>BOOTING 3D ENGINE...</div></Html>}>
                 
                 <ambientLight intensity={1.8} />
                 <directionalLight position={[10, 20, 10]} intensity={2.5} castShadow shadow-mapSize={[2048, 2048]} />
                 <directionalLight position={[-10, 10, -10]} intensity={1} color="#e0f2fe" />
                 <Environment preset="warehouse" />
-
                 <ContactShadows position={[0, -0.1, 0]} opacity={0.6} scale={20} blur={2.5} far={15} color="#334155" />
 
                 <group onPointerMissed={() => { setActivePanelIndex(null); setCameraTarget([0, 0, 0]); }}>
@@ -304,14 +356,8 @@ export default function EnterpriseDashboard() {
               </Suspense>
               
               <OrbitControls 
-                makeDefault 
-                autoRotate={false} 
-                target={cameraTarget} 
-                maxPolarAngle={Math.PI / 2.1} 
-                minDistance={1} 
-                maxDistance={25} 
-                enableDamping 
-                dampingFactor={0.05} 
+                makeDefault autoRotate={false} target={cameraTarget} 
+                maxPolarAngle={Math.PI / 2.1} minDistance={1} maxDistance={25} enableDamping dampingFactor={0.05} 
               />
             </Canvas>
           </div>
@@ -323,13 +369,37 @@ export default function EnterpriseDashboard() {
   const renderRightPanel = () => {
     if (!activeUnitData || activePanelIndex === null) return null;
     return (
-      <aside style={{ width: '400px', background: '#0d1117', borderLeft: '1px solid rgba(255,255,255,0.08)', padding: '24px', overflowY: 'auto', zIndex: 40, animation: 'slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+      <aside style={{ 
+        width: isMobile ? '100%' : '400px', 
+        position: isMobile ? 'absolute' : 'relative',
+        bottom: isMobile ? 0 : 'auto', // Di HP menempel di bawah
+        left: isMobile ? 0 : 'auto',
+        right: isMobile ? 0 : 0,
+        height: isMobile ? '70%' : '100%', // Di HP mengisi 70% layar bawah
+        background: '#0d1117', 
+        borderLeft: '1px solid rgba(255,255,255,0.08)', 
+        borderTop: isMobile ? '2px solid #30363d' : 'none',
+        borderTopLeftRadius: isMobile ? '24px' : '0',
+        borderTopRightRadius: isMobile ? '24px' : '0',
+        padding: '24px', 
+        overflowY: 'auto', 
+        zIndex: 50, 
+        animation: isMobile ? 'slideUp 0.3s ease-out' : 'slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1)' 
+      }}>
         
+        {/* Tombol Tutup Khusus Mobile */}
+        {isMobile && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+            <div style={{ width: '40px', height: '5px', background: '#30363d', borderRadius: '10px' }} />
+            <X size={24} color="#8b949e" style={{ position: 'absolute', right: '20px', top: '20px' }} onClick={() => setActivePanelIndex(null)} />
+          </div>
+        )}
+
         <GlassPanel style={{ padding: '24px', marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
             <div>
               <h2 style={{ margin: '0 0 6px 0', fontSize: '18px', color: '#f0f6fc', fontWeight: '800' }}>{activeUnitData.name}</h2>
-              <div style={{ fontSize: '13px', color: '#10b981', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', letterSpacing: '0.5px' }}>
+              <div style={{ fontSize: '13px', color: '#10b981', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Factory size={14} /> MODULE {activePanelIndex + 1}
               </div>
             </div>
@@ -369,7 +439,7 @@ export default function EnterpriseDashboard() {
         </GlassPanel>
 
         <h3 style={{ fontSize: '12px', color: '#8b949e', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px', fontWeight: '700' }}>Critical Override</h3>
-        <button style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', color: '#ef4444', padding: '18px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '15px', fontWeight: '800', letterSpacing: '1px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: 'inset 0 0 15px rgba(239, 68, 68, 0.15)' }} onMouseOver={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }} onMouseOut={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.color = '#ef4444'; }}>
+        <button style={{ width: '100%', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', color: '#ef4444', padding: '18px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '15px', fontWeight: '800', letterSpacing: '1px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: 'inset 0 0 15px rgba(239, 68, 68, 0.15)' }}>
           <Power size={20} /> INITIATE SUPPRESSION
         </button>
       </aside>
@@ -381,19 +451,19 @@ export default function EnterpriseDashboard() {
       
       {renderHeader()}
       
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
         {renderSidebar()}
         {render3DViewport()}
         {renderRightPanel()}
       </div>
 
-      {/* COPYRIGHT WATERMARK */}
+      {/* COPYRIGHT WATERMARK (Disesuaikan posisinya di HP) */}
       <div style={{
         position: 'absolute', 
         bottom: '12px', 
-        right: activePanelIndex !== null ? '420px' : '20px', 
+        right: isMobile ? '12px' : (activePanelIndex !== null ? '420px' : '20px'), 
         zIndex: 100,
-        fontSize: '11px',
+        fontSize: '10px',
         fontWeight: 'bold',
         color: 'rgba(0,0,0, 0.3)', 
         letterSpacing: '1.5px',
@@ -412,6 +482,10 @@ export default function EnterpriseDashboard() {
         @keyframes slideInRight { 
           0% { transform: translateX(100%); opacity: 0; filter: blur(5px); } 
           100% { transform: translateX(0); opacity: 1; filter: blur(0); } 
+        }
+        @keyframes slideUp { 
+          0% { transform: translateY(100%); opacity: 0; } 
+          100% { transform: translateY(0); opacity: 1; } 
         }
         @keyframes pulse { 
           0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); } 
