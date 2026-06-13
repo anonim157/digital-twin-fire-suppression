@@ -15,7 +15,7 @@ export default function IIoTDashboard() {
           DIGITAL TWIN - CONTROL TOWER
         </h1>
         <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#A0A0A0' }}>
-          Real-Time Production Monitoring System
+          Real-Time Fire Protection & Early Warning System
         </p>
       </div>
 
