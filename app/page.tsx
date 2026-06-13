@@ -10,11 +10,11 @@ import { Model } from '../components/REV1';
 import { 
   MapPin, Search, Bell, Settings, ShieldCheck, Thermometer, Wind, 
   CloudFog, Clock, Server, ChevronLeft, Power, MousePointerClick, 
-  AlertTriangle, Factory, ShieldAlert
+  AlertTriangle, Factory, ShieldAlert, Eye, EyeOff
 } from 'lucide-react';
 
 // ============================================================================
-// KONFIGURASI AWAL & DATA ASSET
+// KONFIGURASI AWAL & DATA ASSET (3 Lokasi Valid)
 // ============================================================================
 
 const MapWithNoSSR = dynamic(() => import('../components/MapLayer'), { ssr: false });
@@ -70,6 +70,9 @@ export default function EnterpriseDashboard() {
   const [systemHealth, setSystemHealth] = useState(100);
   const [cameraTarget, setCameraTarget] = useState([0, 0, 0]);
 
+  // STATE BARU: Mengontrol visibilitas bar pencarian dan filter status
+  const [showSearchControls, setShowSearchControls] = useState(true);
+
   useEffect(() => {
     setMounted(true);
     const timeInterval = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -94,6 +97,7 @@ export default function EnterpriseDashboard() {
   }, []);
 
   const activeUnitData = useMemo(() => selectedUnit ? units.find(u => u.id === selectedUnit.id) : null, [selectedUnit, units]);
+  
   const filteredUnits = useMemo(() => units.filter(unit => {
     const matchSearch = unit.name.toLowerCase().includes(searchQuery.toLowerCase()) || unit.region.toLowerCase().includes(searchQuery.toLowerCase());
     const matchFilter = filterStatus === 'ALL' || unit.status === filterStatus;
@@ -134,6 +138,10 @@ export default function EnterpriseDashboard() {
     if (status === 'WARNING') return '#f59e0b'; 
     return '#ef4444';                           
   };
+
+  // ============================================================================
+  // RENDER SECTIONS
+  // ============================================================================
 
   const renderHeader = () => (
     <header style={{ height: '64px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#0d1117', display: 'flex', alignItems: 'center', padding: '0 24px', justifyContent: 'space-between', zIndex: 50 }}>
@@ -179,33 +187,49 @@ export default function EnterpriseDashboard() {
 
   const renderSidebar = () => (
     <aside style={{ width: '320px', background: '#0d1117', borderRight: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', zIndex: 40 }}>
-      <div style={{ padding: '20px' }}>
-        <div style={{ position: 'relative', marginBottom: '16px' }}>
-          <Search size={16} color="#8b949e" style={{ position: 'absolute', left: '14px', top: '10px' }} />
-          <input 
-            type="text" 
-            placeholder="Search Asset ID / Location..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: '100%', background: '#010409', border: '1px solid #30363d', color: '#f0f6fc', padding: '10px 10px 10px 38px', borderRadius: '8px', outline: 'none', fontSize: '13px', transition: 'border-color 0.2s' }}
-            onFocus={(e) => e.target.style.borderColor = '#10b981'}
-            onBlur={(e) => e.target.style.borderColor = '#30363d'}
-          />
-        </div>
-        
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-          {['ALL', 'SAFE', 'WARNING', 'DANGER'].map(status => (
-            <button 
-              key={status} onClick={() => setFilterStatus(status)}
-              style={{ flex: 1, padding: '8px 0', fontSize: '10px', fontWeight: '700', letterSpacing: '0.5px', background: filterStatus === status ? '#21262d' : 'transparent', color: filterStatus === status ? '#f0f6fc' : '#8b949e', border: filterStatus === status ? '1px solid #30363d' : '1px solid transparent', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s' }}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
+      
+      {/* BARIS SAKELAR HIDE / UNHIDE SEARCH */}
+      <div style={{ padding: '15px 20px 5px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+        <span style={{ fontSize: '11px', color: '#8b949e', fontWeight: 'bold', letterSpacing: '1px' }}>SYSTEM REGISTRY</span>
+        <button 
+          onClick={() => setShowSearchControls(!showSearchControls)} 
+          style={{ background: 'transparent', border: 'none', color: '#10b981', fontSize: '11px', cursor: 'pointer', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px', outline: 'none' }}
+        >
+          {showSearchControls ? <><EyeOff size={12} /> Hide Search</> : <><Eye size={12} /> Show Search</>}
+        </button>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {/* PANEL PENCARIAN & FILTER (BISA DI-COLLAPSE) */}
+      {showSearchControls && (
+        <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)', animation: 'fadeIn 0.2s ease-out' }}>
+          <div style={{ position: 'relative', marginBottom: '16px' }}>
+            <Search size={16} color="#8b949e" style={{ position: 'absolute', left: '14px', top: '10px' }} />
+            <input 
+              type="text" 
+              placeholder="Search Asset ID / Location..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: '100%', background: '#010409', border: '1px solid #30363d', color: '#f0f6fc', padding: '10px 10px 10px 38px', borderRadius: '8px', outline: 'none', fontSize: '13px', transition: 'border-color 0.2s' }}
+              onFocus={(e) => e.target.style.borderColor = '#10b981'}
+              onBlur={(e) => e.target.style.borderColor = '#30363d'}
+            />
+          </div>
+          
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {['ALL', 'SAFE', 'WARNING', 'DANGER'].map(status => (
+              <button 
+                key={status} onClick={() => setFilterStatus(status)}
+                style={{ flex: 1, padding: '8px 0', fontSize: '10px', fontWeight: '700', letterSpacing: '0.5px', background: filterStatus === status ? '#21262d' : 'transparent', color: filterStatus === status ? '#f0f6fc' : '#8b949e', border: filterStatus === status ? '1px solid #30363d' : '1px solid transparent', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* DAFTAR ASSET */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '15px 20px 20px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div style={{ fontSize: '11px', color: '#8b949e', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '4px' }}>DEPLOYED UNITS ({filteredUnits.length})</div>
         
         {filteredUnits.length === 0 ? (
@@ -384,6 +408,7 @@ export default function EnterpriseDashboard() {
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #8b949e; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideInRight { 
           0% { transform: translateX(100%); opacity: 0; filter: blur(5px); } 
           100% { transform: translateX(0); opacity: 1; filter: blur(0); } 
